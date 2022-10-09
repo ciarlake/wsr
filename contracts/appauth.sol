@@ -5,6 +5,8 @@ import "./apphelper.sol";
 contract MarketplaceAuth is MarketplaceHelper {
     mapping (address => bytes32) addressToWord;
 
+    event UserCreated(address _account, string _username);
+
     function registerUser(string calldata _name, string calldata _password) external returns (string memory){
         require(
             addressToUser[msg.sender].role == Role.Guest,
@@ -15,6 +17,7 @@ contract MarketplaceAuth is MarketplaceHelper {
         addressToUser[msg.sender] = User(_name, Role.Customer);
         addressToPassword[msg.sender] = keccak256(abi.encode(_password));
         addressToWord[msg.sender] = keccak256(abi.encode(word));
+        emit UserCreated(msg.sender, _name);
         return word;
     }
     function authorize(string calldata _password, string calldata _word) external view accessLevel(Role.Customer) returns (User memory) {
