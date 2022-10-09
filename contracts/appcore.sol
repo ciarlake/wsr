@@ -42,4 +42,18 @@ contract MarketplaceCore {
     mapping (address => User) internal addressToUser;
     mapping (address => Market) internal addressToMarket;
     mapping (address => bytes32) internal addressToPassword;
+
+    function getUsers() external view returns (User[] memory) {
+        User[] memory foundUsers = new User[](users.length);
+        for (uint i = 0; i < users.length; i++) {
+            foundUsers[i] = addressToUser[users[i]];
+        }
+        return foundUsers;
+    }
+    function getUser(address _userAddr) external view returns(User memory) {
+        return addressToUser[_userAddr];
+    }
+    function getMarket(address _marketAddress) external view returns (Market memory) {
+        return addressToMarket[_marketAddress];
+    }
 }
