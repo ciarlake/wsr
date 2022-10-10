@@ -54,7 +54,10 @@ contract MarketplaceCore {
     function getUser(address _userAddr) external view returns(User memory) {
         return addressToUser[_userAddr];
     }
-    function getMarket(address _marketAddress) external view returns (Market memory) {
+    function getMarket(address _marketAddress) external view returns(Market memory) {
         return addressToMarket[_marketAddress];
+    }
+    function getVendorMarket(address _vendor) external view returns(address) {
+        return vendorToMarket[_vendor];
     }
 }
