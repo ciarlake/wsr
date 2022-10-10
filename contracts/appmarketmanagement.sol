@@ -38,6 +38,7 @@ contract MarketplaceMarketManagement is MarketplaceAuth{
                 _denyMarket(i);
             }
         }
+        revert("address not found");
     }
     function denyMarketAt(uint _idx) external accessLevel(Role.SystemAdministrator) {
         _denyMarket(_idx);
@@ -59,6 +60,9 @@ contract MarketplaceMarketManagement is MarketplaceAuth{
         delete mrRequests[_idx];
         mrRequests[_idx] = mrRequests[mrRequests.length - 1];
         delete mrRequests[mrRequests.length - 1];
+    }
+    function _loanOutMoneyTo(address _account) external payable {
+        
     }
 
 }
