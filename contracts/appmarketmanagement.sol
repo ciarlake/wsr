@@ -3,66 +3,107 @@ pragma solidity ^0.8.7;
 import "./appauth.sol";
 
 contract MarketplaceMarketManagement is MarketplaceAuth{
-    struct MarketRegistrationRequest {
-        address account;
-        string city;
+    struct Loan {
+        address sender;
+        uint repayed;
     }
 
-    event MarketRegistrationRequestCreated(address _account, string _name, string _city);
-    event MarketApproved(address _account, string _name, string _city);
-    event MarketDenied(address _account);
+    event MarketCreated(address _user, string _name, string _city);
+    event MarketDeleted(address _user);
 
-    MarketRegistrationRequest[] private mrRequests;
+    Loan[] internal loans;
 
-    function requestMarketplaceRegistration(string memory _city) external accessLevelExact(Role.Customer){
-        mrRequests.push(MarketRegistrationRequest(msg.sender, _city));
-        emit MarketRegistrationRequestCreated(msg.sender, addressToUser[msg.sender].name, _city);
+    function addMarket(address _user, string memory _city) external accessLevel(Role.SystemAdministrator) {
+        Market memory newMkt = Market(_city);
+        addressToUser[_user].role = Role.Market;
+        addressToMarket[_user] = newMkt;
+        emit MarketCreated(_user, addressToUser[_user].name, _city);
     }
-    function getMRRequests() external view accessLevel(Role.SystemAdministrator) returns (MarketRegistrationRequest[] memory) {
-        return mrRequests;
-    }
-    function approveMarket(address _account) external accessLevel(Role.SystemAdministrator) {
-        for (uint i = 0; i < mrRequests.length; i++) {
-            if (mrRequests[i].account == _account) {
-                _approveMarket(i);
+    function removeMarket(address _user) external accessLevel(Role.SystemAdministrator) {
+        for (uint i = 0; i < users.length; i++) {
+            if(users[i] == _user) {
+                _deleteMarketItems(_user);
+                _demoteVendors(_user);
+                delete addressToUser[users[i]];
+                delete addressToMarket[users[i]];
+                delete users[i]; 
+                emit MarketDeleted(_user);
             }
         }
-        revert("address not found");
     }
-    function approveMarketAt(uint _idx) external accessLevel(Role.SystemAdministrator) {
-        _approveMarket(_idx);
-    }
-    function denyMarket(address _account) external accessLevel(Role.SystemAdministrator) {
-        for (uint i = 0; i < mrRequests.length; i++) {
-            if (mrRequests[i].account == _account) {
-                _denyMarket(i);
+    function requestLoan() external accessLevelExact(Role.Market) {
+        for (uint i = 0; i < loans.length; i++){
+            if (loans[i].sender == msg.sender) {
+                if (loans[i].repayed == 1000) {
+                    revert("you have already requested a loan");
+                } else {
+                    revert("repay all existing loans first");
+                }
             }
         }
-        revert("address not found");
+        loans.push(Loan(msg.sender, 1000));
     }
-    function denyMarketAt(uint _idx) external accessLevel(Role.SystemAdministrator) {
-        _denyMarket(_idx);
+    function loanList() external view accessLevel(Role.Bank) returns (Loan[] memory) {
+        return loans;
     }
-    function _denyMarket(uint _idx) internal {
-        emit MarketDenied(mrRequests[_idx].account);
-        _deleteMRRequest(_idx);
-        return;
+    function approveLoan(address payable _market) external payable accessLevel(Role.Bank) {
+        for (uint i = 0; i < loans.length; i++) {
+            if (loans[i].sender == _market) {
+                require(
+                    msg.value == 1000 ether,
+                    "insufficient ether"
+                );
+                loans[i].repayed = 0;
+                _market.transfer(1000 ether);
+                return;
+            }
+        }
+        revert("market address not found");
     }
-    function _approveMarket(uint _idx) internal {
-        Market memory market = Market(mrRequests[_idx].city);
-        //TODO:Implement new markets taking out a loan of 1000ETH from the Bank account
-        addressToMarket[mrRequests[_idx].account] = market;
-        emit MarketApproved(mrRequests[_idx].account, addressToUser[mrRequests[_idx].account].name, mrRequests[_idx].city);
-        _deleteMRRequest(_idx);
-        return;
+    function denyLoan(address _market) external accessLevel(Role.Bank) {
+        for (uint i = 0; i < loans.length; i++) {
+            if (loans[i].sender == _market) {
+                _deleteLoan(i);
+            }
+        }
+        revert("market address not found");
     }
-    function _deleteMRRequest(uint _idx) private {
-        delete mrRequests[_idx];
-        mrRequests[_idx] = mrRequests[mrRequests.length - 1];
-        delete mrRequests[mrRequests.length - 1];
+    function repayLoan() external payable accessLevelExact(Role.Market) {
+        for (uint i = 0; i < loans.length; i++) {
+            if (loans[i].sender == msg.sender) {
+                address payable bankWallet = payable(users[0]);
+                if (msg.value >= (1000 ether - loans[i].repayed)) {
+                    bankWallet.transfer(1000 ether - loans[i].repayed);
+                    _deleteLoan(i);
+                    return;
+                } else {
+                    bankWallet.transfer(msg.value);
+                    loans[i].repayed -= msg.value;
+                    return;
+                }
+            }
+        }
+        revert("no outgoing loans");
     }
-    function _loanOutMoneyTo(address _account) external payable {
-        
+    function _deleteLoan(uint _idx) internal {
+            loans[_idx] = loans[loans.length - 1];
+            delete loans[loans.length - 1];
+            return;
     }
-
+    function _deleteMarketItems(address _mkt) internal {
+        for (uint i = 0; i < items.length; i++) {
+            if (itemToMarket[i] == _mkt) {
+                delete items[i];
+            }
+        }
+    }
+    function _demoteVendors(address _mkt) internal {
+        for(uint i = 0; i < users.length; i++) {
+            if (addressToUser[users[i]].role == Role.Vendor) {
+                if (vendorToMarket[users[i]] == _mkt) {
+                    addressToUser[users[i]].role = Role.Customer;
+                }
+            }
+        }
+    }
 }

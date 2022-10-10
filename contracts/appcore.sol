@@ -13,7 +13,6 @@ contract MarketplaceCore {
     struct Item {
         string name;
         uint   price;
-        uint   priceDecimals;
     }
     struct RepData {
         address[] likes;
@@ -41,6 +40,7 @@ contract MarketplaceCore {
 
     mapping (address => User) internal addressToUser;
     mapping (address => Market) internal addressToMarket;
+    mapping (address => address) internal vendorToMarket;
     mapping (address => bytes32) internal addressToPassword;
     mapping (uint => address) internal itemToMarket;
 
