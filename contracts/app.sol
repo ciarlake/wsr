@@ -1,8 +1,97 @@
-// SPDX-License-Identifier: UNKNOWN
-pragma solidity ^0.8.7;
-import "./appauth.sol";
+//SPDX-License-Identifier: UNKNOWN
 
-contract MarketplaceMarketManagement is MarketplaceAuth{
+pragma solidity ^0.8.7;
+
+contract MarketplaceCore {
+    struct User {
+        string  name;
+        Role    role;
+        uint    reviewCount;
+    }
+    struct Market {
+        string city;
+        uint reviewCount;
+    }
+    struct Item {
+        string name;
+        uint   price;
+    }
+    struct RepData {
+        address[] likes;
+        address[] dislikes;
+    }
+    struct Review {
+        address author;
+        address market;
+        string title;
+        string body;
+        uint rating;
+    }
+    struct Comment {
+        address author;
+        string body;
+    }
+
+    enum Role { Guest, Customer, Vendor, Supplier, Market, SystemAdministrator, Bank }
+
+    address[] internal users;
+    Review[] internal reviews;
+    Item[] internal items;
+
+    mapping (address => bytes32) addressToWord;
+    mapping (address => User) internal addressToUser;
+    mapping (address => Market) internal addressToMarket;
+    mapping (address => address) internal vendorToMarket;
+    mapping (address => bytes32) internal addressToPassword;
+    mapping (uint => RepData) internal reviewToRep;
+    mapping (uint => RepData) internal commentToRep;
+    mapping (uint => Comment[]) internal reviewToComments;
+    mapping (uint => address) internal itemToMarket;
+
+    function getUsers() external view returns (User[] memory) {
+        User[] memory foundUsers = new User[](users.length);
+        for (uint i = 0; i < users.length; i++) {
+            foundUsers[i] = addressToUser[users[i]];
+        }
+        return foundUsers;
+    }
+    function getUser(address _userAddr) external view returns(User memory) {
+        return addressToUser[_userAddr];
+    }
+    function getMarket(address _marketAddress) external view returns(Market memory) {
+        return addressToMarket[_marketAddress];
+    }
+    function getVendorMarket(address _vendor) external view returns(address) {
+        return vendorToMarket[_vendor];
+    }
+    // ! used for debug; delete this later
+    function setRole(Role _role) external {
+        addressToUser[msg.sender].role = _role;
+    }
+
+    function registerUser(string calldata _name, string calldata _password, string calldata _word) external {
+        require(
+            addressToUser[msg.sender].role == Role.Guest,
+            "user already exists"
+        );
+        users.push(msg.sender);
+        addressToUser[msg.sender] = User(_name, Role.Customer, 0);
+        addressToPassword[msg.sender] = keccak256(abi.encode(_password));
+        addressToWord[msg.sender] = keccak256(abi.encode(_word));
+    }
+    function authorize(string calldata _password, string calldata _word) external view accessLevel(Role.Customer) returns (User memory) {
+        require(
+            addressToPassword[msg.sender] == keccak256(abi.encode(_password)),
+            "invalid password"
+        );
+        require(
+            addressToWord[msg.sender] == keccak256(abi.encode(_word)),
+            "invalid word"
+        );
+
+        return addressToUser[msg.sender];
+    }
+    
     struct Loan {
         address sender;
         uint repayed;
@@ -106,4 +195,23 @@ contract MarketplaceMarketManagement is MarketplaceAuth{
             }
         }
     }
+
+
+    modifier accessLevel(Role _required) {
+        require (
+            addressToUser[msg.sender].role >= _required,
+            "access denied"
+        );
+        _;
+    }
+    modifier accessLevelExact(Role _required) {
+        require(
+            addressToUser[msg.sender].role == _required,
+            "access denied"
+        );
+        _;
+    
+    }
+    
+
 }
