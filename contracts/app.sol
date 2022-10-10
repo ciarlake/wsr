@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: UNKNOWN
 
 pragma solidity ^0.8.7;
-
 contract MarketplaceCore {
     struct User {
         string  name;
@@ -11,6 +10,7 @@ contract MarketplaceCore {
     struct Market {
         string city;
         uint reviewCount;
+        uint vendorCount;
     }
     struct Item {
         string name;
@@ -26,17 +26,33 @@ contract MarketplaceCore {
         string title;
         string body;
         uint rating;
+        uint commentCount;
     }
     struct Comment {
         address author;
         string body;
+    }
+    struct Loan {
+        address sender;
+        uint repayed;
+    }
+    struct VendorRequest {
+        address sender;
+        address market;
+    }
+    struct CustomerRequest {
+        address sender;
     }
 
     enum Role { Guest, Customer, Vendor, Supplier, Market, SystemAdministrator, Bank }
 
     address[] internal users;
     Review[] internal reviews;
+    Comment[] internal comments;
     Item[] internal items;
+    Loan[] internal loans;
+    VendorRequest[] internal vendorRequests;
+    CustomerRequest[] internal customerRequests;
 
     mapping (address => bytes32) addressToWord;
     mapping (address => User) internal addressToUser;
@@ -45,7 +61,7 @@ contract MarketplaceCore {
     mapping (address => bytes32) internal addressToPassword;
     mapping (uint => RepData) internal reviewToRep;
     mapping (uint => RepData) internal commentToRep;
-    mapping (uint => Comment[]) internal reviewToComments;
+    mapping (uint => uint) internal commentToReview;
     mapping (uint => address) internal itemToMarket;
 
     function getUsers() external view returns (User[] memory) {
@@ -64,11 +80,25 @@ contract MarketplaceCore {
     function getVendorMarket(address _vendor) external view returns(address) {
         return vendorToMarket[_vendor];
     }
+    function getVendors(address _market) external view returns (User[] memory) {
+        User[] memory foundVendors = new User[](addressToMarket[_market].vendorCount);
+        uint idx = 0;
+        for (uint i = 0; i < users.length; i++) {
+            if ((addressToUser[users[i]].role == Role.Vendor) && (vendorToMarket[users[i]] == _market)) {
+                foundVendors[idx++] = addressToUser[users[i]];
+            } 
+        }
+        return foundVendors;
+    }
     // ! used for debug; delete this later
     function setRole(Role _role) external {
         addressToUser[msg.sender].role = _role;
     }
-
+/*
+*-------------------------------------
+*   REGISTRATION AND AUTHORIZATION
+*-------------------------------------
+*/
     function registerUser(string calldata _name, string calldata _password, string calldata _word) external {
         require(
             addressToUser[msg.sender].role == Role.Guest,
@@ -79,11 +109,10 @@ contract MarketplaceCore {
         addressToPassword[msg.sender] = keccak256(abi.encode(_password));
         addressToWord[msg.sender] = keccak256(abi.encode(_word));
     }
-    function authorize(string calldata _password, string calldata _word) external view accessLevel(Role.Customer) returns (User memory) {
-        require(
-            addressToPassword[msg.sender] == keccak256(abi.encode(_password)),
-            "invalid password"
-        );
+    function authorize(string calldata _password) external view accessLevel(Role.Customer) returns (bool) {
+        return addressToPassword[msg.sender] == keccak256(abi.encode(_password));
+    }
+    function checkWord(string calldata _word) external view accessLevel(Role.Customer) returns (User memory) {
         require(
             addressToWord[msg.sender] == keccak256(abi.encode(_word)),
             "invalid word"
@@ -91,22 +120,15 @@ contract MarketplaceCore {
 
         return addressToUser[msg.sender];
     }
-    
-    struct Loan {
-        address sender;
-        uint repayed;
-    }
-
-    event MarketCreated(address _user, string _name, string _city);
-    event MarketDeleted(address _user);
-
-    Loan[] internal loans;
-
+/*
+*-----------------------
+*   MARKET MANAGEMENT
+*-----------------------
+*/
     function addMarket(address _user, string memory _city) external accessLevel(Role.SystemAdministrator) {
-        Market memory newMkt = Market(_city);
+        Market memory newMkt = Market(_city, 0, 0);
         addressToUser[_user].role = Role.Market;
         addressToMarket[_user] = newMkt;
-        emit MarketCreated(_user, addressToUser[_user].name, _city);
     }
     function removeMarket(address _user) external accessLevel(Role.SystemAdministrator) {
         for (uint i = 0; i < users.length; i++) {
@@ -116,21 +138,20 @@ contract MarketplaceCore {
                 delete addressToUser[users[i]];
                 delete addressToMarket[users[i]];
                 delete users[i]; 
-                emit MarketDeleted(_user);
             }
         }
     }
     function requestLoan() external accessLevelExact(Role.Market) {
         for (uint i = 0; i < loans.length; i++){
             if (loans[i].sender == msg.sender) {
-                if (loans[i].repayed == 1000) {
+                if (loans[i].repayed == 1000 ether) {
                     revert("you have already requested a loan");
                 } else {
                     revert("repay all existing loans first");
                 }
             }
         }
-        loans.push(Loan(msg.sender, 1000));
+        loans.push(Loan(msg.sender, 1000 ether));
     }
     function loanList() external view accessLevel(Role.Bank) returns (Loan[] memory) {
         return loans;
@@ -194,9 +215,153 @@ contract MarketplaceCore {
                 }
             }
         }
+   }
+/*
+*-------------------------
+*   REVIEWS & COMMENTS
+*-------------------------
+*/
+    function getReviewsByMarket(address _market) external view returns(Review[] memory) {
+        Review[] memory foundReviews = new Review[](addressToMarket[_market].reviewCount);
+        uint idx;
+        for (uint i = 0; i < reviews.length; i++) {
+            if (reviews[i].market == _market) {
+                foundReviews[idx++] = reviews[i];
+            }
+        }
+        return foundReviews;
     }
+    function getReviewsByAuthor(address _author) external view returns(Review[] memory) {
+        Review[] memory foundReviews = new Review[](addressToUser[_author].reviewCount);
+        uint idx;
+        for (uint i = 0; i < reviews.length; i++) {
+            if (reviews[i].author == _author) {
+                foundReviews[idx++] = reviews[i];
+            }
+        }
+        return foundReviews;
+    }
+    function createReview(address _market, string calldata _title, string calldata _body, uint _rating) external accessLevel(Role.Customer) {
+        Review memory newRev = Review(msg.sender, _market, _title, _body, _rating, 0);
+        reviews.push(newRev);
+        addressToMarket[_market].reviewCount++;
+    }
+    function createComment(uint _reviewId, string calldata _body) external accessLevel(Role.Customer) {
+        comments.push(Comment(msg.sender, _body));
+        commentToReview[comments.length - 1] = _reviewId;
+        reviews[_reviewId].commentCount++;
+    }
+    function getComments(uint _reviewId) external view returns(Comment[] memory) {
+        Comment[] memory foundComments = new Comment[](reviews[_reviewId].commentCount);
+        uint idx = 0;
+        for (uint i = 0; i < comments.length; i++) {
+            if (commentToReview[i] == _reviewId) {
+                foundComments[idx++] = comments[i];
+            }
+        }
+        return foundComments;
+    }
+    function likeReview(uint _reviewId) external {
+        reviewToRep[_reviewId].likes.push(msg.sender);
+    }
+    function dislikeReview(uint _reviewId) external {
+        reviewToRep[_reviewId].dislikes.push(msg.sender);
+    }
+    function removeReaction(uint _reviewId) external {
+        for (uint i = 0; i < reviewToRep[_reviewId].likes.length; i++) {
+            if (reviewToRep[_reviewId].likes[i] == msg.sender) {
+                reviewToRep[_reviewId].likes[i] == reviewToRep[_reviewId].likes[reviewToRep[_reviewId].likes.length - 1];
+                delete reviewToRep[_reviewId].likes[reviewToRep[_reviewId].likes.length - 1];
+            } 
+        }
+        for (uint i = 0; i < reviewToRep[_reviewId].dislikes.length; i++) {
+            if (reviewToRep[_reviewId].dislikes[i] == msg.sender) {
+                reviewToRep[_reviewId].dislikes[i] == reviewToRep[_reviewId].dislikes[reviewToRep[_reviewId].dislikes.length - 1];
+                delete reviewToRep[_reviewId].dislikes[reviewToRep[_reviewId].dislikes.length - 1];
+            } 
+        }
+    }
+    function likeComment(uint _commentId) external {
+        commentToRep[_commentId].likes.push(msg.sender);
+    }
+    function dislikeComment(uint _commentId) external {
+        commentToRep[_commentId].dislikes.push(msg.sender);
+    }
+    function removeCommentReaction(uint _commentId) external {
+        for (uint i = 0; i < commentToRep[_commentId].likes.length; i++) {
+            if (commentToRep[_commentId].likes[i] == msg.sender) {
+                commentToRep[_commentId].likes[i] == commentToRep[_commentId].likes[commentToRep[_commentId].likes.length - 1];
+                delete commentToRep[_commentId].likes[commentToRep[_commentId].likes.length - 1];
+            } 
+        }
+        for (uint i = 0; i < commentToRep[_commentId].dislikes.length; i++) {
+            if (commentToRep[_commentId].dislikes[i] == msg.sender) {
+                commentToRep[_commentId].dislikes[i] == commentToRep[_commentId].dislikes[commentToRep[_commentId].dislikes.length - 1];
+                delete commentToRep[_commentId].dislikes[commentToRep[_commentId].dislikes.length - 1];
+            } 
+        }
+    }
+    function getReviewReactions(uint _commentId) external view returns(uint, uint) {
 
-
+    }
+    
+/*
+*----------------------
+*   USER MANAGEMENT
+*----------------------
+*/
+    function requestVendor(address _market) external accessLevelExact(Role.Customer) {
+        for (uint i = 0; i < vendorRequests.length; i++) {
+            require(
+                vendorRequests[i].sender != _market,
+                "vendor request from this user already exists"
+            );
+        }
+        vendorRequests.push(VendorRequest(msg.sender, _market));
+    }
+    function requestCustomer() external accessLevelExact(Role.Vendor) {
+        customerRequests.push(CustomerRequest(msg.sender));
+    }
+    function listVendorRequests() external view accessLevelExact(Role.SystemAdministrator) returns(VendorRequest[] memory) {
+        return vendorRequests;
+    }
+    function listCustomerRequests() external view accessLevelExact(Role.Vendor) returns (CustomerRequest[] memory) {
+        return customerRequests;
+    }
+    function approveVendor(address _user) external accessLevelExact(Role.SystemAdministrator) {
+        for (uint i = 0; i < vendorRequests.length; i++) {
+            if (vendorRequests[i].sender == _user) {
+                addressToUser[_user].role = Role.Vendor;
+                vendorToMarket[_user] = vendorRequests[i].market;
+                addressToMarket[vendorRequests[i].market].vendorCount++;
+                _deleteVendorRequest(i);
+                return;
+            }
+        }
+        revert("user address not found");
+    }
+    function denyVendor(address _user) external accessLevelExact(Role.SystemAdministrator) {
+        for (uint i = 0; i < vendorRequests.length; i++) {
+            if (vendorRequests[i].sender == _user) {
+                _deleteVendorRequest(i);
+                return;
+            }
+        }   
+        revert("user address not found");
+    }
+    function demoteVendor(address _vendor) external accessLevelExact(Role.SystemAdministrator) {
+        require(
+            addressToUser[_vendor].role == Role.Vendor,
+            "user isn't a vendor"
+        );
+        addressToUser[_vendor].role == Role.Customer;
+        addressToMarket[vendorToMarket[_vendor]].vendorCount--;
+        delete vendorToMarket[_vendor];
+    }
+    function _deleteVendorRequest(uint _idx) internal {
+        vendorRequests[_idx] = vendorRequests[vendorRequests.length - 1];
+        delete vendorRequests[vendorRequests.length - 1]; 
+    }
     modifier accessLevel(Role _required) {
         require (
             addressToUser[msg.sender].role >= _required,
