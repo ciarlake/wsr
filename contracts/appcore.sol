@@ -6,9 +6,11 @@ contract MarketplaceCore {
     struct User {
         string  name;
         Role    role;
+        uint    reviewCount;
     }
     struct Market {
         string city;
+        uint reviewCount;
     }
     struct Item {
         string name;
@@ -24,7 +26,8 @@ contract MarketplaceCore {
         string title;
         string body;
         RepData rep;
-        Comment[] comments;
+        uint rating;
+        uint[] comments;
     }
     struct Comment {
         address author;
@@ -37,12 +40,12 @@ contract MarketplaceCore {
     address[] internal users;
     Review[] internal reviews;
     Item[] internal items;
+    Comment[] internal comments;
 
     mapping (address => User) internal addressToUser;
     mapping (address => Market) internal addressToMarket;
     mapping (address => address) internal vendorToMarket;
     mapping (address => bytes32) internal addressToPassword;
-    mapping (uint => address) internal itemToMarket;
 
     function getUsers() external view returns (User[] memory) {
         User[] memory foundUsers = new User[](users.length);
