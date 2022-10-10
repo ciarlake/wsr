@@ -24,18 +24,36 @@ contract MarketplaceMarketManagement is MarketplaceAuth{
     function approveMarket(address _account) external accessLevel(Role.SystemAdministrator) {
         for (uint i = 0; i < mrRequests.length; i++) {
             if (mrRequests[i].account == _account) {
-                Market memory market = Market(mrRequests[i].city);
-                //TODO:Implement new markets taking out a loan of 1000ETH from the Bank account
-                addressToMarket[_account] = market;
-                emit MarketApproved(_account, addressToUser[_account].name, mrRequests[i].city);
-                _deleteMRRequest(i);
-                return;
+                _approveMarket(i);
             }
         }
-        revert("user not found");
+        revert("address not found");
+    }
+    function approveMarketAt(uint _idx) external accessLevel(Role.SystemAdministrator) {
+        _approveMarket(_idx);
     }
     function denyMarket(address _account) external accessLevel(Role.SystemAdministrator) {
-
+        for (uint i = 0; i < mrRequests.length; i++) {
+            if (mrRequests[i].account == _account) {
+                _denyMarket(i);
+            }
+        }
+    }
+    function denyMarketAt(uint _idx) external accessLevel(Role.SystemAdministrator) {
+        _denyMarket(_idx);
+    }
+    function _denyMarket(uint _idx) internal {
+        emit MarketDenied(mrRequests[_idx].account);
+        _deleteMRRequest(_idx);
+        return;
+    }
+    function _approveMarket(uint _idx) internal {
+        Market memory market = Market(mrRequests[_idx].city);
+        //TODO:Implement new markets taking out a loan of 1000ETH from the Bank account
+        addressToMarket[mrRequests[_idx].account] = market;
+        emit MarketApproved(mrRequests[_idx].account, addressToUser[mrRequests[_idx].account].name, mrRequests[_idx].city);
+        _deleteMRRequest(_idx);
+        return;
     }
     function _deleteMRRequest(uint _idx) private {
         delete mrRequests[_idx];
