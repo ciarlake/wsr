@@ -1,0 +1,18 @@
+{
+    "alloc": {},
+    "config": {
+        "chainId": 18,
+        "eip150Block": 0,
+        "eip155Block": 0,
+        "eip158Block": 0,
+        "homesteadBlock": 0,
+        "istanbulBlock": 0,
+        "constantinopleBlock": 0,
+        "petersburgBlock": 0,
+        "byzantiumBlock": 0
+    },
+    "gasValue": "0x100",
+    "gasLimit": "0x3000000000000",
+    "difficulty": "0",
+    "nonce": "0xaf"
+}
