@@ -1,5 +1,51 @@
 {
-    "alloc": {},
+    "alloc": {
+        "0x260cFFEc6b488a8031FD2950E8827faC370923Bf": {
+            "balance": "10000"
+        },
+        "0xb430e86Dea7705D8cbb988d14Ed82982aaBDE031": {
+            "balance": "1000"
+        },
+        "0x31d874819557992F9072cfcd621a2CDF5917C77a": {
+            "balance": "900"
+        },
+        "0x6e36B1C4cA02564e8C444a24907AE0CE4a838e7a": {
+            "balance": "1050"
+        },
+        "0x88f61913A6F47e64c9dEa4950D85130E8Cd77945": {
+            "balance": "700"
+        },
+        "0x1F25FAfFc2447C923304791658c4882973bD3C2a": {
+            "balance": "2000"
+        },
+        "0x69eD840CBFd58A93193a2A5EF5Fb8b80B90EcD15": {
+            "balance": "2300"
+        },
+        "0x455da86808cE6D0e73B064126BaE58Fcff72DD60": {
+            "balance": "0"
+        },
+        "0x2528D7Af808B0D458039d421756dc308D9bC18F2": {
+            "balance": "780"
+        },
+        "0xC2eddCFDE6a1629EFD098Ad1D6024cBc82439C43": {
+            "balance": "1500"
+        },
+        "0xFFdaB5A9F222A96d78822486417508229CedB698": {
+            "balance": "100"
+        },
+        "0x3Dc5eaCBb57B4a935e186386152e408428A7e8eE": {
+            "balance": "50"
+        },
+        "0x0deC193d2D20A65AF83BEC89738477228191c6a5": {
+            "balance": "70"
+        },
+        "0x3e4117F5e6eB699b2a012e3B0fAEaE37bb4AaBa4": {
+            "balance": "80"
+        },
+        "0x566724a32a646F10185965f2d50d5eC57C35C144": {
+            "balance": "8000"
+        }
+    },
     "config": {
         "chainId": 18,
         "eip150Block": 0,
