@@ -163,7 +163,12 @@ contract MarketplaceCore {
     }
     struct Item {
         string name;
+        string manufacurer;
+        string storageTemperature;
         uint256 price;
+        uint256 productionDate;
+        uint256 shelfLife;
+        Measurement measurement;
     }
     struct RepData {
         address[] likes;
@@ -193,6 +198,11 @@ contract MarketplaceCore {
         address sender;
     }
 
+    enum Measurement {
+        Kilogram,
+        Unit
+    }
+
     enum Role {
         Guest,
         Customer,
@@ -220,6 +230,7 @@ contract MarketplaceCore {
     mapping(uint256 => RepData) internal commentToRep;
     mapping(uint256 => uint256) internal commentToReview;
     mapping(uint256 => address) internal itemToMarket;
+    mapping(uint256 => address) internal itemToVendor;
     mapping(address => Role) internal roleLookup;
 
     function getUsers() external view returns (User[] memory) {
@@ -246,7 +257,11 @@ contract MarketplaceCore {
         return vendorToMarket[_vendor];
     }
 
-    function getVendors(address _market) external view returns (address[] memory) {
+    function getVendors(address _market)
+        external
+        view
+        returns (address[] memory)
+    {
         address[] memory foundVendors = new address[](
             addressToMarket[_market].vendorCount
         );
@@ -601,8 +616,9 @@ contract MarketplaceCore {
         roleLookup[msg.sender] = addressToUser[msg.sender].role;
         addressToUser[msg.sender].role = Role.Customer;
     }
+
     function switchOffCustomerView() external accessLevel(Role.Customer) {
-        require( 
+        require(
             roleLookup[msg.sender] != Role(0),
             "customer view has not been toggled"
         );
@@ -610,6 +626,7 @@ contract MarketplaceCore {
         addressToUser[msg.sender].role = roleLookup[msg.sender];
         delete roleLookup[msg.sender];
     }
+
     function addVendor(address _user, address _market)
         external
         accessLevel(Role.SystemAdministrator)
@@ -734,5 +751,37 @@ contract MarketplaceCore {
     modifier accessLevelExact(Role _required) {
         require(addressToUser[msg.sender].role == _required, "access denied");
         _;
+    }
+
+    /*
+     *-----------------------
+     *   ITEMS & VENDORS
+     *-----------------------
+     */
+
+    function createItem(
+        string calldata _name,
+        string calldata _manufacturer,
+        string calldata _storageTemperature,
+        uint256 _price,
+        uint256 _productionDate,
+        uint256 _shelfLife,
+        Measurement _measurement
+    ) external accessLevelExact(Role.Vendor) {
+        Item memory newItem = Item(
+            _name,
+            _manufacturer,
+            _storageTemperature,
+            _price,
+            _productionDate,
+            _shelfLife,
+            _measurement
+        );
+        items.push(newItem);
+        itemToVendor[items.length - 1] = msg.sender;
+    }
+
+    function itemList() external view accessLevelExact(Role.Market) returns (Item[] memory) {
+        return items;
     }
 }
