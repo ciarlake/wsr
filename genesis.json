@@ -44,7 +44,33 @@
         },
         "0x566724a32a646F10185965f2d50d5eC57C35C144": {
             "balance": "8000000000000000000000"
+        },
+        "0xe868F08F1361aCE02B12Dc19e2BC4E80952569aB": {
+            "balance": "80"
+        },
+        "0xfcc124fbb8b7759acC94ADBF088A6FD2A7ad2E20": {
+            "balance": "90"
+        },
+        "0x590941d8A72b455FC5ed72D938Fd042f8D5e264e": {
+            "balance": "100"
+        },
+        "0xEFe87F1F37Db8CEA1340Aeb6b93cAE8893538998": {
+            "balance": "150"
+        },
+        "0x9c34B3D9A8dc4F1184ac9B1221618eD6D9613474": {
+            "balance": "80"
+        },
+        "0x17e1c2a93066A82D2ea6a0361319C38739453234": {
+            "balance": "90"
+        },
+        "0x2fD2d5Dba98b7dbcDbb2325398729F050C1B1B08": {
+            "balance": "100"
+        },
+        "0xD7dF2237c7409d58FE2FC27ed767c96442EFEB50": {
+            "balance": "120"
         }
+
+
     },
     "config": {
         "chainId": 18,
