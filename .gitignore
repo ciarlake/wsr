@@ -2,3 +2,5 @@
 \.vscode
 \geth
 \bin
+\history
+.~lock*
